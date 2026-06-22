@@ -1,0 +1,5 @@
+{
+  "name": "local-cdocs-vitepress-core",
+  "private": true,
+  "type": "module"
+}
