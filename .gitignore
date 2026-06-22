@@ -30,3 +30,6 @@ Thumbs.db
 .env.*
 *.pem
 *.key
+
+# Claude Code 하니스 내부 파일
+.claude/
