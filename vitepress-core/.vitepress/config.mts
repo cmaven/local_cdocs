@@ -4,7 +4,7 @@
  *       (ENV 미지정 시 vitepress-core/.. 기본 폴더 사용 — CLI 단독 검증용)
  *       package.json에 "type":"module"이 없어 .ts는 CJS로 로드돼 vitepress(ESM) require 실패 →
  *       .mts 확장자로 ESM 로딩을 강제한다. ESM이라 __dirname 대신 import.meta.url 사용.
- * 생성일: 2026-04-08 | 수정일: 2026-06-22
+ * 생성일: 2026-04-08 | 수정일: 2026-06-24
  */
 import { defineConfig } from 'vitepress'
 import fs from 'node:fs'
@@ -185,8 +185,8 @@ function generateCategories(): { label: string; path: string; dir: string }[] {
  * 카드 = 하위 폴더(있으면, index.md의 title/description 사용) 또는 직속 .md.
  * (HomePage는 group.year를 섹션 라벨로 사용하므로 카테고리 표시명을 year에 담는다)
  */
-function generateHomeProjects(): { year: string; items: { name: string; desc: string; href: string }[] }[] {
-  const result: { year: string; items: { name: string; desc: string; href: string }[] }[] = []
+function generateHomeProjects(): { year: string; dir: string; items: { name: string; desc: string; href: string }[] }[] {
+  const result: { year: string; dir: string; items: { name: string; desc: string; href: string }[] }[] = []
   for (const cat of topLevelFolders()) {
     const catPath = path.join(docsRoot, cat)
     const items: { name: string; desc: string; href: string }[] = []
@@ -216,7 +216,21 @@ function generateHomeProjects(): { year: string; items: { name: string; desc: st
         items.push({ name, desc: '', href: `/${cat}/${f.replace(/\.md$/, '')}` })
       }
     }
-    if (items.length) result.push({ year: formatName(cat), items })
+    // 카드가 하나도 없으면(예: index.md만 있는 새 컬렉션) 카테고리 랜딩 자체를 카드로 노출 — 홈에서 사라지지 않게.
+    if (!items.length) {
+      const idx = path.join(catPath, 'index.md')
+      if (fs.existsSync(idx)) {
+        let name = formatName(cat)
+        let desc = ''
+        try {
+          const { data } = matter(fs.readFileSync(idx, 'utf-8'))
+          if (data.title) name = data.title
+          if (data.description) desc = data.description
+        } catch {}
+        items.push({ name, desc, href: `/${cat}/` })
+      }
+    }
+    if (items.length) result.push({ year: formatName(cat), dir: cat, items })
   }
   return result
 }
@@ -234,6 +248,10 @@ export default defineConfig({
   title: 'local-cdocs',
   description: '내 Markdown 라이브러리',
   lang: 'ko-KR',
+
+  // 모든 자동 생성 링크(사이드바/카테고리/홈)가 확장자 없는 형태이므로 cleanUrls로 정합.
+  // dev/build 양쪽에서 /a/b/c ↔ /a/b/c.html 해석이 일관되어 중첩 경로 404를 예방한다.
+  cleanUrls: true,
 
   head: [
     ['link', { rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/gh/sun-typeface/SUITE/fonts/variable/woff2/SUITE-Variable.css' }],
