@@ -1,8 +1,8 @@
 <!--
-  HomePage.vue: 라이브러리 대시보드 - 카테고리(년도) 섹션 + 프로젝트 카드 그리드 + 관리 액션
-  상세: themeConfig.homeProjects({year, dir, items[]})를 "년도 섹션 + 프로젝트 카드"로 렌더(status_01 스타일).
-        섹션 헤더에 카테고리(최상위 폴더) 단위 관리 메뉴(이름변경/삭제/탐색기), 카드는 문서 진입 링크.
-        상단 액션 바(새 컬렉션/가져오기/폴더 열기) + window.localcdocs IPC. Electron 미구동 시 graceful 폴백.
+  HomePage.vue: 라이브러리 대시보드 - 컬렉션 카드 그리드 + 관리 액션
+  상세: themeConfig.categories를 컬렉션 카드로 렌더. 상단 액션 바(새 컬렉션/가져오기/폴더 열기)와
+        카드별 메뉴(이름변경/삭제/탐색기)에서 window.localcdocs IPC를 호출한다.
+        데스크톱(Electron) 미구동 시 graceful 폴백(버튼 비활성 + 안내).
   생성일: 2026-04-08 | 수정일: 2026-06-24
 -->
 <script setup>
@@ -11,9 +11,8 @@ import { useData } from 'vitepress'
 
 const { theme } = useData()
 
-// 카테고리(년도) 그룹: config.mts의 themeConfig.homeProjects ({year, dir, items:[{name,desc,href}]}).
-// year=표시명(formatName), dir=원본 폴더명(관리 IPC용), items=하위 프로젝트 또는 직속 .md 카드.
-const groups = computed(() => theme.value.homeProjects || [])
+// 컬렉션 목록: config.mts의 themeConfig.categories ({label, path, dir})
+const categories = computed(() => theme.value.categories || [])
 
 // Electron preload 브리지(window.localcdocs). 브라우저/CLI 단독 구동 시 없음 → 폴백.
 const api = ref(null)
@@ -161,33 +160,28 @@ async function onReveal(cat) {
       </div>
 
       <!-- 빈 라이브러리 안내 -->
-      <div v-if="groups.length === 0" class="empty-state">
+      <div v-if="categories.length === 0" class="empty-state">
         <p class="empty-title">아직 컬렉션이 없습니다.</p>
         <p class="empty-desc">첫 컬렉션을 만들어 보세요.</p>
         <button class="btn-brand" :disabled="!hasApi" @click.stop="openCreateModal">+ 새 컬렉션</button>
       </div>
 
-      <!-- 카테고리(년도) 섹션 + 프로젝트 카드 그리드 -->
-      <div v-else class="group-list">
-        <section v-for="g in groups" :key="g.dir" class="cat-section">
-          <div class="cat-header">
-            <h2 class="cat-title"><span class="cat-dot">•</span>{{ g.year }}</h2>
+      <!-- 컬렉션 카드 그리드 -->
+      <div v-else class="card-grid">
+        <div v-for="cat in categories" :key="cat.dir" class="collection-card">
+          <div class="card-top">
+            <h3 class="card-name">{{ cat.label }}</h3>
             <div v-if="hasApi" class="card-menu-wrap">
-              <button class="kebab" title="메뉴" @click.stop="toggleMenu(g.dir)">⋯</button>
-              <div v-if="openMenu === g.dir" class="card-menu" @click.stop>
-                <button @click="openRenameModal({ dir: g.dir, label: g.year })">이름변경</button>
-                <button @click="onReveal({ dir: g.dir })">탐색기</button>
-                <button class="danger" @click="onDelete({ dir: g.dir, label: g.year })">삭제</button>
+              <button class="kebab" title="메뉴" @click.stop="toggleMenu(cat.dir)">⋯</button>
+              <div v-if="openMenu === cat.dir" class="card-menu" @click.stop>
+                <button @click="openRenameModal(cat)">이름변경</button>
+                <button @click="onReveal(cat)">탐색기</button>
+                <button class="danger" @click="onDelete(cat)">삭제</button>
               </div>
             </div>
           </div>
-          <div class="card-grid">
-            <a v-for="item in g.items" :key="item.href" :href="item.href" class="project-card">
-              <h3 class="card-name">{{ item.name }}</h3>
-              <p v-if="item.desc" class="card-desc">{{ item.desc }}</p>
-            </a>
-          </div>
-        </section>
+          <a :href="cat.path" class="card-open">열기 →</a>
+        </div>
       </div>
 
       <!-- Footer -->
@@ -262,35 +256,29 @@ async function onReveal(cat) {
 .empty-title { font-size: 1.25rem; font-weight: 600; margin: 0 0 0.5rem; }
 .empty-desc { color: var(--vp-c-text-2); margin: 0 0 1.5rem; }
 
-/* 카테고리(년도) 섹션 */
-.group-list { display: flex; flex-direction: column; gap: 2.5rem; }
-.cat-section { display: flex; flex-direction: column; gap: 1rem; }
-.cat-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.cat-title {
-  display: flex; align-items: center; gap: 0.5rem;
-  font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; margin: 0;
-  border: none; padding: 0;
-}
-.cat-dot { color: var(--vp-c-brand-1); line-height: 1; }
-
 /* Card Grid */
 .card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
 @media (min-width: 1024px) { .card-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1440px) { .card-grid { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 640px) { .card-grid { grid-template-columns: 1fr; } }
 
-.project-card {
-  display: flex; flex-direction: column; gap: 0.4rem;
-  padding: 1.5rem; border-radius: 12px; min-height: 5.5rem;
+.collection-card {
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 1.5rem; border-radius: 12px; min-height: 7rem;
   border: 1px solid var(--vp-c-border); color: var(--vp-c-text-1);
-  text-decoration: none; transition: all 0.2s;
+  transition: all 0.2s;
 }
-.project-card:hover {
+.collection-card:hover {
   border-color: var(--vp-c-brand-1);
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
 .card-name { font-size: 1.1rem; font-weight: 600; margin: 0; word-break: break-word; }
-.card-desc { font-size: 0.875rem; color: var(--vp-c-text-2); margin: 0; line-height: 1.5; }
+.card-open {
+  margin-top: 1rem; font-size: 0.9rem; font-weight: 600;
+  color: var(--vp-c-brand-1); text-decoration: none; align-self: flex-start;
+}
+.card-open:hover { text-decoration: underline; }
 
 /* 케밥 메뉴 */
 .card-menu-wrap { position: relative; flex-shrink: 0; }

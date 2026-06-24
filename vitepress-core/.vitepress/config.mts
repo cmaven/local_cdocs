@@ -180,65 +180,9 @@ function generateCategories(): { label: string; path: string; dir: string }[] {
   return categories
 }
 
-/**
- * 랜딩 홈 카드 자동 생성 (HomePage용) — 카테고리(최상위 폴더)별 섹션.
- * 카드 = 하위 폴더(있으면, index.md의 title/description 사용) 또는 직속 .md.
- * (HomePage는 group.year를 섹션 라벨로 사용하므로 카테고리 표시명을 year에 담는다)
- */
-function generateHomeProjects(): { year: string; dir: string; items: { name: string; desc: string; href: string }[] }[] {
-  const result: { year: string; dir: string; items: { name: string; desc: string; href: string }[] }[] = []
-  for (const cat of topLevelFolders()) {
-    const catPath = path.join(docsRoot, cat)
-    const items: { name: string; desc: string; href: string }[] = []
-    const subs = subDirsOf(catPath)
-    if (subs.length) {
-      for (const d of subs) {
-        const dPath = path.join(catPath, d)
-        const dmd = mdFilesOf(dPath)
-        if (!dmd.length) continue
-        const href = dmd.includes('index.md') ? `/${cat}/${d}/` : `/${cat}/${d}/${dmd[0].replace(/\.md$/, '')}`
-        let name = formatName(d)
-        let desc = ''
-        const idx = path.join(dPath, 'index.md')
-        if (fs.existsSync(idx)) {
-          try {
-            const { data } = matter(fs.readFileSync(idx, 'utf-8'))
-            if (data.title) name = data.title
-            if (data.description) desc = data.description
-          } catch {}
-        }
-        items.push({ name, desc, href })
-      }
-    } else {
-      for (const f of mdFilesOf(catPath)) {
-        if (f === 'index.md') continue
-        const name = getTitle(path.join(catPath, f), f.replace(/\.md$/, ''))
-        items.push({ name, desc: '', href: `/${cat}/${f.replace(/\.md$/, '')}` })
-      }
-    }
-    // 카드가 하나도 없으면(예: index.md만 있는 새 컬렉션) 카테고리 랜딩 자체를 카드로 노출 — 홈에서 사라지지 않게.
-    if (!items.length) {
-      const idx = path.join(catPath, 'index.md')
-      if (fs.existsSync(idx)) {
-        let name = formatName(cat)
-        let desc = ''
-        try {
-          const { data } = matter(fs.readFileSync(idx, 'utf-8'))
-          if (data.title) name = data.title
-          if (data.description) desc = data.description
-        } catch {}
-        items.push({ name, desc, href: `/${cat}/` })
-      }
-    }
-    if (items.length) result.push({ year: formatName(cat), dir: cat, items })
-  }
-  return result
-}
-
 // 사이드바 + 카테고리 + 홈 프로젝트 자동 생성
 const sidebar = generateSidebar()
 const categories = generateCategories()
-const homeProjects = generateHomeProjects()
 
 export default defineConfig({
   // 사용자가 선택한 폴더(docsRoot)를 콘텐츠 소스로 사용.
@@ -262,7 +206,6 @@ export default defineConfig({
     nav: [],
     sidebar,
     categories,
-    homeProjects,
 
     search: {
       provider: 'local'
