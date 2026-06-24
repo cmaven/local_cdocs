@@ -1,0 +1,56 @@
+# ============================================================
+# build-windows.yml: Windows용 설치 파일(.exe) 자동 빌드 & 릴리스
+# 상세: windows-latest 러너에서 electron-builder로 NSIS 인스톨러 + 포터블 exe 생성.
+#       태그(v*) 푸시 시 GitHub Releases에 자동 첨부, 수동 실행 시 Artifacts로 업로드.
+# 생성일: 2026-06-24
+# ============================================================
+name: Build Windows Installer
+
+on:
+  push:
+    tags:
+      - "v*"          # 예: v1.0.0 푸시 → 자동 빌드 + 릴리스 첨부
+  workflow_dispatch:  # Actions 탭에서 수동 실행(테스트용, Artifacts로 다운로드)
+
+permissions:
+  contents: write     # 릴리스 생성/첨부에 필요
+
+jobs:
+  build-win:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows installer
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 수동 실행/일반 푸시: 빌드 결과를 Artifacts로 업로드(다운로드용)
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-cdocs-windows
+          path: |
+            dist/*.exe
+          if-no-files-found: error
+
+      # 태그 푸시일 때만: GitHub Releases 페이지에 exe 자동 첨부
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+          generate_release_notes: true
