@@ -1,4 +1,4 @@
-<!-- CustomLayout.vue: VitePress DefaultTheme 확장 레이아웃 + 사이드바 토글 | 수정일: 2026-04-09 -->
+<!-- CustomLayout.vue: VitePress DefaultTheme 확장 레이아웃 + 사이드바 토글 | 수정일: 2026-06-25 -->
 <script setup>
 import DefaultTheme from 'vitepress/theme'
 import { useData, useRoute } from 'vitepress'
@@ -67,6 +67,11 @@ onUnmounted(() => {
   <!-- 사이드바 닫힌 상태: 플로팅 버튼 -->
   <Transition name="float">
     <div v-if="sidebarCollapsed" class="floating-buttons">
+      <a href="/" class="float-btn" title="홈으로">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9.5 12 3l9 6.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>
+        </svg>
+      </a>
       <button @click="toggleSidebar" class="float-btn" title="사이드바 열기">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
@@ -88,6 +93,11 @@ onUnmounted(() => {
   justify-content: space-between;
   padding: 0.75rem;
   border-bottom: 1px solid var(--vp-c-border);
+  /* 사이드바 스크롤 시에도 홈 링크가 항상 상단에 보이도록 고정 (좁은 화면 포함) */
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--vp-sidebar-bg-color, #ffffff);
 }
 .sidebar-header .sidebar-title {
   font-size: 1rem;

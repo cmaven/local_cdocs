@@ -4,7 +4,7 @@
  *       (ENV 미지정 시 vitepress-core/.. 기본 폴더 사용 — CLI 단독 검증용)
  *       package.json에 "type":"module"이 없어 .ts는 CJS로 로드돼 vitepress(ESM) require 실패 →
  *       .mts 확장자로 ESM 로딩을 강제한다. ESM이라 __dirname 대신 import.meta.url 사용.
- * 생성일: 2026-04-08 | 수정일: 2026-06-24
+ * 생성일: 2026-04-08 | 수정일: 2026-06-25
  */
 import { defineConfig } from 'vitepress'
 import fs from 'node:fs'
@@ -180,9 +180,66 @@ function generateCategories(): { label: string; path: string; dir: string }[] {
   return categories
 }
 
+/**
+ * 랜딩 홈(HomePage) 데이터 — 카테고리(최상위 폴더)별 섹션 + 하위 프로젝트 카드.
+ * group = { year(표시명), dir(원본 폴더명, 관리 IPC용), items[] }
+ * item  = { name, desc, href, dir }
+ *   - dir = 프로젝트(하위 폴더)명. 직속 .md/폴백 카드는 dir=null → 프로젝트 단위 관리 메뉴 미노출.
+ */
+function generateHomeProjects(): { year: string; dir: string; items: { name: string; desc: string; href: string; dir: string | null }[] }[] {
+  const result: { year: string; dir: string; items: { name: string; desc: string; href: string; dir: string | null }[] }[] = []
+  for (const cat of topLevelFolders()) {
+    const catPath = path.join(docsRoot, cat)
+    const items: { name: string; desc: string; href: string; dir: string | null }[] = []
+    const subs = subDirsOf(catPath)
+    if (subs.length) {
+      for (const d of subs) {
+        const dPath = path.join(catPath, d)
+        const dmd = mdFilesOf(dPath)
+        if (!dmd.length) continue
+        const href = dmd.includes('index.md') ? `/${cat}/${d}/` : `/${cat}/${d}/${dmd[0].replace(/\.md$/, '')}`
+        let name = formatName(d)
+        let desc = ''
+        const idx = path.join(dPath, 'index.md')
+        if (fs.existsSync(idx)) {
+          try {
+            const { data } = matter(fs.readFileSync(idx, 'utf-8'))
+            if (data.title) name = data.title
+            if (data.description) desc = data.description
+          } catch {}
+        }
+        items.push({ name, desc, href, dir: d })
+      }
+    } else {
+      for (const f of mdFilesOf(catPath)) {
+        if (f === 'index.md') continue
+        const name = getTitle(path.join(catPath, f), f.replace(/\.md$/, ''))
+        items.push({ name, desc: '', href: `/${cat}/${f.replace(/\.md$/, '')}`, dir: null })
+      }
+    }
+    // 카드가 하나도 없으면(예: index.md만 있는 새 컬렉션) 카테고리 랜딩 자체를 카드로 노출 — 홈에서 사라지지 않게.
+    if (!items.length) {
+      const idx = path.join(catPath, 'index.md')
+      if (fs.existsSync(idx)) {
+        let name = formatName(cat)
+        let desc = ''
+        try {
+          const { data } = matter(fs.readFileSync(idx, 'utf-8'))
+          if (data.title) name = data.title
+          if (data.description) desc = data.description
+        } catch {}
+        items.push({ name, desc, href: `/${cat}/`, dir: null })
+      }
+    }
+    if (items.length) result.push({ year: formatName(cat), dir: cat, items })
+  }
+  return result
+}
+
 // 사이드바 + 카테고리 + 홈 프로젝트 자동 생성
 const sidebar = generateSidebar()
 const categories = generateCategories()
+const homeProjects = generateHomeProjects()
 
 export default defineConfig({
   // 사용자가 선택한 폴더(docsRoot)를 콘텐츠 소스로 사용.
@@ -206,6 +263,7 @@ export default defineConfig({
     nav: [],
     sidebar,
     categories,
+    homeProjects,
 
     search: {
       provider: 'local'

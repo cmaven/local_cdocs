@@ -71,6 +71,36 @@ function resolveChild(root, dir) {
   return target
 }
 
+// root/cat/project가 모두 단일 세그먼트 자식인지 검증 → 손자(프로젝트) 절대 경로 또는 null.
+// 카테고리(cat) 폴더의 직속 하위 폴더(project)만 허용 → 디렉토리 탈출/중첩 차단.
+function resolveGrandchild(root, cat, project) {
+  const catPath = resolveChild(root, cat)
+  if (!catPath) return null
+  return resolveChild(catPath, project)
+}
+
+// 프로젝트(카테고리 하위 폴더) 이름 변경: 원본/대상 검증 → renameSync.
+// 반환: { ok:true, name } 또는 { ok:false, error }
+function renameProject(root, cat, project, newName) {
+  const src = resolveGrandchild(root, cat, project)
+  if (!src) return { ok: false, error: '대상 프로젝트가 올바르지 않습니다.' }
+  if (!fs.existsSync(src)) return { ok: false, error: '프로젝트를 찾을 수 없습니다.' }
+  const v = validateCollectionName(newName)
+  if (!v.ok) return v
+  const catPath = resolveChild(root, cat)
+  const dest = resolveChild(catPath, v.name)
+  if (!dest) return { ok: false, error: '사용할 수 없는 이름입니다.' }
+  if (path.resolve(dest) !== path.resolve(src) && fs.existsSync(dest)) {
+    return { ok: false, error: '같은 이름의 프로젝트가 이미 있습니다.' }
+  }
+  try {
+    fs.renameSync(src, dest)
+    return { ok: true, name: v.name }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+}
+
 // 이름 충돌 시 ' (2)', ' (3)' ... suffix를 붙여 사용 가능한 경로를 찾는다.
 // 반환: { dir, dest } (실제 사용할 폴더명과 절대 경로)
 function uniqueDest(root, baseName) {
@@ -487,6 +517,37 @@ ipcMain.handle('library:reveal', async (_evt, dir) => {
   }
 })
 
+// ── 프로젝트(카테고리 하위 폴더) 단위 관리 ─────────────────
+ipcMain.handle('library:renameProject', (_evt, cat, project, newName) => {
+  try {
+    return renameProject(LIBRARY_ROOT, cat, project, newName)
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+})
+
+ipcMain.handle('library:deleteProject', async (_evt, cat, project) => {
+  try {
+    const target = resolveGrandchild(LIBRARY_ROOT, cat, project)
+    if (!target) return { ok: false, error: '대상 프로젝트가 올바르지 않습니다.' }
+    if (!fs.existsSync(target)) return { ok: false, error: '프로젝트를 찾을 수 없습니다.' }
+    // 영구삭제 금지 — 휴지통으로 이동
+    await shell.trashItem(target)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+})
+
+ipcMain.handle('library:revealProject', async (_evt, cat, project) => {
+  try {
+    const target = resolveGrandchild(LIBRARY_ROOT, cat, project)
+    if (target) await shell.openPath(target)
+  } catch (e) {
+    console.error('[local-cdocs] revealProject 실패:', e)
+  }
+})
+
 // ── 앱 라이프사이클 ────────────────────────────────────────
 // 단일 인스턴스 보장(중복 실행 방지)
 const gotLock = app.requestSingleInstanceLock()
@@ -532,4 +593,6 @@ module.exports = {
   createCollection,
   importFolderTo,
   renameCollection,
+  resolveGrandchild,
+  renameProject,
 }
