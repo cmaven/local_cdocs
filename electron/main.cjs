@@ -4,7 +4,7 @@
  *       항상 열고, 그 안의 컬렉션 폴더를 생성/가져오기/이름변경/삭제/탐색기열기 한다.
  *       VitePress dev 서버 자식 프로세스 기동/종료, 동적 포트, chokidar 실시간 감지,
  *       라이브러리 IPC 핸들러, 네이티브 메뉴(라이브러리용).
- * 생성일: 2026-06-22 | 수정일: 2026-06-22
+ * 생성일: 2026-06-22 | 수정일: 2026-06-25
  */
 const { app, BrowserWindow, dialog, Menu, ipcMain, shell } = require('electron')
 const path = require('node:path')
@@ -131,6 +131,17 @@ function ensureLibrary(root, templateDir) {
     }
   }
 
+  // 마이그레이션: 과거 시드가 남긴 시작하기/index.md(루트 대시보드 누수)를 제거.
+  // 카테고리 직속 index.md가 사이드바에 군더더기 항목을 만들므로, <HomePage>를 담은 누수본만 정리한다.
+  const seedIndex = path.join(seedDir, 'index.md')
+  try {
+    if (fs.existsSync(seedIndex) && fs.readFileSync(seedIndex, 'utf-8').includes('<HomePage')) {
+      fs.rmSync(seedIndex)
+    }
+  } catch (e) {
+    console.error('[local-cdocs] 시작하기 index.md 정리 실패:', e)
+  }
+
   // 루트 index.md(라이브러리 대시보드 = HomePage). 없을 때만 생성.
   const indexPath = path.join(root, 'index.md')
   if (!fs.existsSync(indexPath)) {
@@ -142,7 +153,7 @@ function ensureLibrary(root, templateDir) {
   }
 }
 
-// 새 컬렉션 생성: 검증 → 중복 확인 → 폴더 + 기본 index.md 생성.
+// 새 컬렉션 생성: 검증 → 중복 확인 → 폴더만 생성(빈 상태는 홈에서 처리).
 // 반환: { ok:true } 또는 { ok:false, error }
 function createCollection(root, name) {
   const v = validateCollectionName(name)
@@ -152,7 +163,6 @@ function createCollection(root, name) {
   if (fs.existsSync(dest)) return { ok: false, error: '같은 이름의 컬렉션이 이미 있습니다.' }
   try {
     fs.mkdirSync(dest, { recursive: false })
-    fs.writeFileSync(path.join(dest, 'index.md'), `# ${v.name}\n`, 'utf-8')
     return { ok: true, name: v.name }
   } catch (e) {
     return { ok: false, error: e.message }

@@ -182,12 +182,14 @@ function generateCategories(): { label: string; path: string; dir: string }[] {
 
 /**
  * 랜딩 홈(HomePage) 데이터 — 카테고리(최상위 폴더)별 섹션 + 하위 프로젝트 카드.
- * group = { year(표시명), dir(원본 폴더명, 관리 IPC용), items[] }
+ * group = { year(표시명), dir(원본 폴더명, 관리 IPC용), empty?(빈 컬렉션 여부), items[] }
  * item  = { name, desc, href, dir }
  *   - dir = 프로젝트(하위 폴더)명. 직속 .md/폴백 카드는 dir=null → 프로젝트 단위 관리 메뉴 미노출.
+ *   - empty=true: 콘텐츠(하위폴더/.md/index.md)가 전혀 없는 빈 컬렉션. items=[]이며 홈에서
+ *     "빈 상태 카드"로 렌더되어 클릭 시 폴더를 reveal(파일탐색기)로 안내한다(이동할 페이지 없음).
  */
-function generateHomeProjects(): { year: string; dir: string; items: { name: string; desc: string; href: string; dir: string | null }[] }[] {
-  const result: { year: string; dir: string; items: { name: string; desc: string; href: string; dir: string | null }[] }[] = []
+function generateHomeProjects(): { year: string; dir: string; empty?: boolean; items: { name: string; desc: string; href: string; dir: string | null }[] }[] {
+  const result: { year: string; dir: string; empty?: boolean; items: { name: string; desc: string; href: string; dir: string | null }[] }[] = []
   for (const cat of topLevelFolders()) {
     const catPath = path.join(docsRoot, cat)
     const items: { name: string; desc: string; href: string; dir: string | null }[] = []
@@ -231,7 +233,13 @@ function generateHomeProjects(): { year: string; dir: string; items: { name: str
         items.push({ name, desc, href: `/${cat}/`, dir: null })
       }
     }
-    if (items.length) result.push({ year: formatName(cat), dir: cat, items })
+    if (items.length) {
+      result.push({ year: formatName(cat), dir: cat, items })
+    } else {
+      // 콘텐츠가 전혀 없는 빈 컬렉션(하위폴더 0 + .md 0 + index.md 0)도 홈에서 사라지지 않게
+      // empty 플래그로 노출 — HomePage가 빈 상태 카드로 렌더하고 클릭 시 폴더를 reveal한다.
+      result.push({ year: formatName(cat), dir: cat, items: [], empty: true })
+    }
   }
   return result
 }

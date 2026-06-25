@@ -166,6 +166,20 @@ async function onReveal(g) {
   }
 }
 
+// 빈 컬렉션 카드 클릭 — 이동할 페이지가 없으므로 폴더를 파일탐색기에서 연다(reveal).
+// Electron 미구동(web/dev) 시 api 없음 → 클릭 무동작 + 안내 토스트만.
+async function onRevealEmpty(g) {
+  if (!hasApi.value) {
+    showToast('데스크톱 앱에서 폴더를 열어 프로젝트를 추가하세요.')
+    return
+  }
+  try {
+    await api.value.reveal(g.dir)
+  } catch (e) {
+    showToast(`탐색기 열기 실패: ${e.message || e}`)
+  }
+}
+
 // ── 프로젝트(카테고리 하위 폴더) 단위 작업 ──────────────────
 async function onDeleteProject(catDir, item) {
   closeMenu()
@@ -234,21 +248,37 @@ async function onRevealProject(catDir, item) {
           </div>
 
           <div class="card-grid">
-            <div v-for="item in g.items" :key="item.href" class="project-card">
-              <a :href="item.href" class="project-card-body">
-                <h3 class="card-name">{{ item.name }}</h3>
-                <p v-if="item.desc" class="card-desc">{{ item.desc }}</p>
-              </a>
-              <!-- 프로젝트(하위 폴더) 카드만 관리 메뉴 노출 -->
-              <div v-if="hasApi && item.dir" class="card-menu-wrap">
-                <button class="kebab" title="프로젝트 메뉴" @click.stop.prevent="toggleMenu(projKey(g.dir, item))">⋯</button>
-                <div v-if="openMenu === projKey(g.dir, item)" class="card-menu" @click.stop>
-                  <button @click="openProjectRenameModal(g.dir, item)">이름변경</button>
-                  <button @click="onRevealProject(g.dir, item)">탐색기</button>
-                  <button class="danger" @click="onDeleteProject(g.dir, item)">삭제</button>
+            <!-- 빈 컬렉션(empty=true): 이동할 페이지가 없으므로 라우터 이동 대신 클릭 시 폴더를 reveal -->
+            <button
+              v-if="g.empty"
+              type="button"
+              class="project-card project-card--empty"
+              @click.stop="onRevealEmpty(g)"
+            >
+              <span class="project-card-body">
+                <span class="card-name card-name--empty">비어 있음 · 프로젝트를 추가하세요</span>
+                <span class="card-desc">{{ hasApi ? '클릭하면 폴더가 열립니다.' : '데스크톱 앱에서 폴더를 열 수 있습니다.' }}</span>
+              </span>
+            </button>
+
+            <!-- 일반(비어있지 않은) 컬렉션: 기존 프로젝트 카드 -->
+            <template v-else>
+              <div v-for="item in g.items" :key="item.href" class="project-card">
+                <a :href="item.href" class="project-card-body">
+                  <h3 class="card-name">{{ item.name }}</h3>
+                  <p v-if="item.desc" class="card-desc">{{ item.desc }}</p>
+                </a>
+                <!-- 프로젝트(하위 폴더) 카드만 관리 메뉴 노출 -->
+                <div v-if="hasApi && item.dir" class="card-menu-wrap">
+                  <button class="kebab" title="프로젝트 메뉴" @click.stop.prevent="toggleMenu(projKey(g.dir, item))">⋯</button>
+                  <div v-if="openMenu === projKey(g.dir, item)" class="card-menu" @click.stop>
+                    <button @click="openProjectRenameModal(g.dir, item)">이름변경</button>
+                    <button @click="onRevealProject(g.dir, item)">탐색기</button>
+                    <button class="danger" @click="onDeleteProject(g.dir, item)">삭제</button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </template>
           </div>
         </section>
       </div>
@@ -366,6 +396,21 @@ async function onRevealProject(catDir, item) {
   color: var(--vp-c-text-1); text-decoration: none;
 }
 .card-name { font-size: 1.05rem; font-weight: 600; margin: 0; word-break: break-word; }
+
+/* 빈 컬렉션 카드 — 점선 테두리 + 흐린 톤으로 "콘텐츠 없음"을 드러낸다.
+   button 요소이므로 기본 버튼 스타일을 제거하고 카드 레이아웃을 따른다. */
+.project-card--empty {
+  border-style: dashed;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  width: 100%;
+  padding: 0;
+}
+.project-card--empty:hover { border-color: var(--vp-c-brand-1); }
+.project-card--empty .project-card-body { width: 100%; }
+.card-name--empty { display: block; color: var(--vp-c-text-2); font-weight: 600; }
 .card-desc {
   margin: 0.4rem 0 0; font-size: 0.875rem; color: var(--vp-c-text-2);
   line-height: 1.5; word-break: break-word;
