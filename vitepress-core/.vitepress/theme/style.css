@@ -320,17 +320,23 @@ body.hide-navbar .VPDoc .content {
 .dark {
   --vp-sidebar-bg-color: #1a1f1e;
 }
-/* has-aside 유무와 관계없이 사이드바 너비 고정 */
+/* has-aside 유무와 관계없이 사이드바 너비 고정.
+   ⚠️ VPSidebar 자체를 flex 컨테이너로 두면, 세로 공간이 부족할 때(창 축소) flex + footer의
+   margin-top:auto 조합이 첫 항목(01)을 위로 잘라내고 스크롤로도 복구되지 않는다.
+   따라서 VPSidebar는 '일반 블록 스크롤 컨테이너'로 두고(overflow-y:auto), 높이 채우기는
+   아래 .nav 의 min-height:100% 로 처리한다. */
 .VPSidebar {
   width: var(--vp-sidebar-width) !important;
   max-width: var(--vp-sidebar-width) !important;
-  display: flex !important;
-  flex-direction: column !important;
   padding-bottom: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
-/* nav가 사이드바 전체 높이를 채우도록 → footer가 항상 하단 고정 */
+/* nav가 사이드바 높이(100vh)를 '최소'로 채워 footer가 항상 하단 고정되게 하되(min-height:100%),
+   항목이 많아 넘치면 nav가 콘텐츠 높이로 자라고 부모(.VPSidebar)가 스크롤한다.
+   → 창을 줄여도 첫 항목(01)이 잘리지 않고, 스크롤로 모든 항목 접근 가능. */
 .VPSidebar .nav {
-  flex: 1 !important;
+  min-height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
 }
