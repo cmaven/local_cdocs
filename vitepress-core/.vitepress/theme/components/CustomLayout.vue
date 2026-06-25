@@ -45,16 +45,20 @@ onUnmounted(() => {
 <template>
   <Layout>
     <template #sidebar-nav-before>
-      <div class="sidebar-header">
-        <a href="/" class="sidebar-title">local-cdocs</a>
-        <button class="sidebar-toggle" @click="toggleSidebar" title="사이드바 닫기">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
-          </svg>
-        </button>
+      <!-- 헤더 + 카테고리/버전 드롭다운을 하나의 sticky 블록으로 묶어, 좁은 화면에서
+           사이드바를 스크롤해도 항상 상단에 고정되도록 한다(드롭다운이 헤더 밑으로 사라지는 현상 방지). -->
+      <div class="sidebar-top">
+        <div class="sidebar-header">
+          <a href="/" class="sidebar-title">local-cdocs</a>
+          <button class="sidebar-toggle" @click="toggleSidebar" title="사이드바 닫기">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+          </button>
+        </div>
+        <CategoryDropdown />
+        <VersionSelector />
       </div>
-      <CategoryDropdown />
-      <VersionSelector />
     </template>
     <template #sidebar-nav-after>
       <SidebarFooter />
@@ -87,17 +91,31 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* 헤더 + 드롭다운 묶음: 사이드바 스크롤과 무관하게 항상 상단 고정.
+   불투명 배경으로 스크롤되는 항목을 완전히 덮어 비침(틈)도 함께 방지한다. */
+.sidebar-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--vp-sidebar-bg-color, #ffffff);
+}
+/* sticky 블록 최상단 경계의 서브픽셀 틈으로 항목 글자가 비치는 현상 차단(상단을 위로 더 덮음) */
+.sidebar-top::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  height: 12px;
+  background: var(--vp-sidebar-bg-color, #ffffff);
+}
+
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem;
   border-bottom: 1px solid var(--vp-c-border);
-  /* 사이드바 스크롤 시에도 홈 링크가 항상 상단에 보이도록 고정 (좁은 화면 포함) */
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  background: var(--vp-sidebar-bg-color, #ffffff);
 }
 .sidebar-header .sidebar-title {
   font-size: 1rem;
