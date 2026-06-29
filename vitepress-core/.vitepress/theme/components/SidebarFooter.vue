@@ -68,10 +68,27 @@ function openSearch() {
   /* 사이드바 스크롤 컨테이너(.VPSidebar) 하단에 sticky 고정 */
   position: sticky;
   bottom: 0;
-  width: 100%;
   background: var(--vp-sidebar-bg-color, #ffffff);
   z-index: 2;
   box-sizing: border-box;
+  /* VPSidebar 좌우 padding(32px)을 음수 마진으로 상쇄해 불투명 배경이 사이드바 전체 폭을
+     덮도록 한다. 스크롤 시 항목 캐럿/끝 글자가 footer 옆으로 새는 것까지 차단.
+     padding으로 내부 콘텐츠 위치는 그대로 유지. (.sidebar-top 과 동일 기법) */
+  margin-left: -32px;
+  margin-right: -32px;
+  padding-left: calc(0.75rem + 32px);
+  padding-right: calc(0.75rem + 32px);
+}
+/* sticky 블록 최상단 경계의 서브픽셀 틈으로 스크롤되는 항목 글자(다크모드 녹색)가
+   비쳐 튀어나오는 현상 차단(footer 위쪽을 불투명 배경으로 더 덮음). */
+.sidebar-footer::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 12px;
+  background: var(--vp-sidebar-bg-color, #ffffff);
 }
 
 /* Row 1: Search */
