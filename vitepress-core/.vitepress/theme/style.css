@@ -1,4 +1,4 @@
-/* style.css: VitePress 민트 테마 CSS (cmaven.github.io 참조) | 수정일: 2026-04-09 */
+/* style.css: VitePress 민트 테마 CSS (cmaven.github.io 참조) | 수정일: 2026-06-30 */
 
 /* ── 폰트 ── */
 @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2107@1.1/SUITE-Regular.woff2') format('woff2');
@@ -11,6 +11,16 @@
   /* ── 레이아웃: 사이드바 왼쪽 끝, TOC 오른쪽 끝, 콘텐츠 가변 ── */
   --vp-sidebar-width: 260px;
   --vp-layout-max-width: 100vw;
+}
+
+/* ── 사용자 설정(Settings 패널) CSS 변수 ── */
+:root {
+  --cdocs-line-height: 1.85;
+  --cdocs-content-font-size: 16px;
+  --cdocs-font-body: var(--vp-font-family-base);
+  --cdocs-font-heading: var(--vp-font-family-base);
+  --cdocs-font-sidebar: var(--vp-font-family-base);
+  --cdocs-font-toc: var(--vp-font-family-base);
 }
 
 /* ── Light 모드: 민트 테마 ── */
@@ -397,7 +407,9 @@ body.has-doc-header .vp-doc > div > h1:first-child {
 .vp-doc {
   overflow-wrap: break-word;
   word-break: break-word;
-  line-height: 1.85;
+  line-height: var(--cdocs-line-height);
+  font-size: var(--cdocs-content-font-size);
+  font-family: var(--cdocs-font-body);
 }
 .vp-doc pre {
   max-width: 100%;
@@ -470,3 +482,8 @@ body.has-doc-header .vp-doc > div > h1:first-child {
 }
 
 /* ── 사이드바 내부: 푸터가 sticky로 하단 고정되므로 별도 패딩 불필요 ── */
+
+/* ── Settings: 영역별 폰트 적용 ── */
+.vp-doc :is(h1,h2,h3,h4,h5,h6) { font-family: var(--cdocs-font-heading); }
+.VPSidebar { font-family: var(--cdocs-font-sidebar); }      /* 좌측 사이드바 */
+.VPDocAside { font-family: var(--cdocs-font-toc); }          /* 우측 목차 */
