@@ -1,8 +1,9 @@
 <!--
   Mermaid.vue: Mermaid 다이어그램 렌더링 + 확대(줌/팬) 모달
   상세: 그래프 하단 "확대하기" 버튼 → 전체화면 모달에서 휠/버튼 확대·축소, 드래그 이동(pan), 리셋, ESC 닫기.
-        넓은 그래프(width 과다)가 본문에서 잘려 보일 때 모달로 자유롭게 탐색한다. 외부 의존성 없이 CSS transform 기반.
-  생성일: 2026-04-08 | 수정일: 2026-06-24
+        넓은 그래프(width 과다)가 본문에서 잘려 보일 때 모달로 자유롭게 탐색한다. 외부 의존성 없이 동작.
+        확대는 CSS transform:scale(비트맵 확대 → 블러) 대신 SVG width/height를 base×scale로 재설정해 벡터를 재렌더(선명). 팬만 translate 사용.
+  생성일: 2026-04-08 | 수정일: 2026-07-01
 -->
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
@@ -90,12 +91,45 @@ const MAX = 8
 
 let dragging = false
 let startX = 0, startY = 0, startTx = 0, startTy = 0
+// SVG 자연 크기(px). 확대는 CSS transform:scale 대신 SVG width/height를 base×scale로
+// 재설정해 벡터를 목표 해상도로 재렌더 → 어떤 배율에서도 선명(블러 방지).
+let baseW = 0, baseH = 0
 
 function clampScale(s) { return Math.min(MAX, Math.max(MIN, s)) }
 
-function applyTransform() {
+// 모달 내 SVG의 자연 크기 측정 — viewBox 우선, 없으면 getBBox/bounding rect 폴백.
+function measureBase() {
+  const svg = stage.value && stage.value.querySelector('svg')
+  if (!svg) return
+  const vb = svg.viewBox && svg.viewBox.baseVal
+  if (vb && vb.width && vb.height) {
+    baseW = vb.width; baseH = vb.height
+    return
+  }
+  try { const b = svg.getBBox(); baseW = b.width; baseH = b.height } catch {}
+  if (!baseW || !baseH) {
+    const r = svg.getBoundingClientRect(); baseW = r.width; baseH = r.height
+  }
+}
+
+// 팬(이동)만 반영 — 위치 이동은 블러를 유발하지 않으므로 translate 사용.
+function applyPan() {
   if (stage.value) {
-    stage.value.style.transform = `translate(${tx.value}px, ${ty.value}px) scale(${scale.value})`
+    stage.value.style.transform = `translate(${tx.value}px, ${ty.value}px)`
+  }
+}
+
+// 이동 + 확대 반영 — 확대는 SVG의 실제 width/height를 base×scale로 설정(벡터 재렌더).
+function applyTransform() {
+  if (!stage.value) return
+  applyPan()
+  const svg = stage.value.querySelector('svg')
+  if (!svg) return
+  if (!baseW || !baseH) measureBase()
+  if (baseW && baseH) {
+    svg.style.maxWidth = 'none'
+    svg.style.width = (baseW * scale.value) + 'px'
+    svg.style.height = (baseH * scale.value) + 'px'
   }
 }
 
@@ -107,7 +141,10 @@ function resetView() {
 function openZoom() {
   if (!svgCode.value) return
   zoomOpen.value = true
-  resetView()
+  scale.value = 1; tx.value = 0; ty.value = 0
+  baseW = 0; baseH = 0
+  // 모달 SVG가 마운트된 뒤 자연 크기 측정 → 초기 표시.
+  nextTick(() => { measureBase(); applyTransform() })
   if (typeof document !== 'undefined') {
     document.body.style.overflow = 'hidden'
     window.addEventListener('keydown', onKey)
@@ -166,7 +203,7 @@ function onMove(e) {
   if (!dragging) return
   tx.value = startTx + (e.clientX - startX)
   ty.value = startTy + (e.clientY - startY)
-  applyTransform()
+  applyPan() // 드래그 중엔 크기 재계산 없이 위치만 갱신(성능)
 }
 function onUp() { dragging = false }
 
