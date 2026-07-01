@@ -1,4 +1,4 @@
-<!-- CustomLayout.vue: VitePress DefaultTheme 확장 레이아웃 + 사이드바 토글 | 수정일: 2026-06-25 -->
+<!-- CustomLayout.vue: VitePress DefaultTheme 확장 레이아웃 + 사이드바 토글 | 수정일: 2026-07-01 -->
 <script setup>
 import DefaultTheme from 'vitepress/theme'
 import { useData, useRoute } from 'vitepress'
@@ -7,6 +7,8 @@ import CategoryDropdown from './CategoryDropdown.vue'
 import VersionSelector from './VersionSelector.vue'
 import SidebarFooter from './SidebarFooter.vue'
 import DocHeader from './DocHeader.vue'
+import SettingsModal from './SettingsModal.vue'
+import { openSettings } from '../composables/useSettings'
 
 const { Layout } = DefaultTheme
 const { frontmatter } = useData()
@@ -66,7 +68,19 @@ onUnmounted(() => {
     <template #doc-before>
       <DocHeader />
     </template>
+    <template #nav-bar-content-after>
+      <!-- 상단 nav 우측: 문서 보기 설정 기어 버튼 -->
+      <button class="nav-settings-btn" @click="openSettings" title="문서 보기 설정" aria-label="설정">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </template>
   </Layout>
+
+  <!-- 설정 모달: 전역 1회 마운트 (Teleport로 body에 렌더됨) -->
+  <SettingsModal />
 
   <!-- 사이드바 닫힌 상태: 플로팅 버튼 -->
   <Transition name="float">
@@ -185,6 +199,24 @@ onUnmounted(() => {
 .float-btn:hover {
   color: var(--vp-c-brand-1);
   background: var(--vp-c-brand-soft);
+}
+
+/* 상단 nav 기어 버튼: VitePress 소셜 링크(.VPSocialLink)와 정렬 */
+.nav-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  color: var(--vp-c-text-2);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.2s;
+}
+.nav-settings-btn:hover {
+  color: var(--vp-c-text-1);
 }
 
 /* 플로팅 버튼 애니메이션 */

@@ -1,8 +1,8 @@
 /**
  * useSettings.ts: 사용자 문서 보기 설정(테마/줄간격/폰트크기/영역별 폰트) 상태 + localStorage 영속화 + CSS 변수 적용
- * 생성일: 2026-06-30 | 수정일: 2026-06-30
+ * 생성일: 2026-06-30 | 수정일: 2026-07-01
  */
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 
 /** 테마 모드: 라이트 / 다크 / 시스템 따라가기 */
 export type ThemeMode = 'light' | 'dark' | 'system'
@@ -119,4 +119,20 @@ export function resolveIsDark(mode: ThemeMode): boolean {
 /** 설정을 기본값으로 초기화 */
 export function resetSettings(): void {
   Object.assign(settings, DEFAULT_SETTINGS)
+}
+
+/**
+ * 설정 모달 열림 상태(전역 공유).
+ * 상단 nav 기어(홈/page)와 사이드바 footer 기어(문서)가 동일 모달을 공유하기 위한 계약.
+ */
+export const settingsOpen = ref(false)
+
+/** 설정 모달 열기 */
+export function openSettings(): void {
+  settingsOpen.value = true
+}
+
+/** 설정 모달 닫기 */
+export function closeSettings(): void {
+  settingsOpen.value = false
 }

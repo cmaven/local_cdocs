@@ -1,25 +1,17 @@
-<!-- SidebarFooter.vue: 사이드바 하단 - 검색 + 아이콘(토글/GitHub/설정) | 수정일: 2026-06-30 -->
+<!-- SidebarFooter.vue: 사이드바 하단 - 검색 + 아이콘(토글/GitHub/설정) | 수정일: 2026-07-01 -->
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { onMounted, onBeforeUnmount } from 'vue'
 import { useData } from 'vitepress'
-import SettingsPanel from './SettingsPanel.vue'
 import {
   settings,
   loadSettings,
   saveSettings,
   applyCssVars,
   resolveIsDark,
+  openSettings,
 } from '../composables/useSettings'
 
 const { isDark } = useData()
-
-// 설정 팝오버 표시 상태 + 외부 클릭 감지용 컨테이너 참조
-const showSettings = ref(false)
-const settingsWrap = ref(null)
-
-function toggleSettings() {
-  showSettings.value = !showSettings.value
-}
 
 function toggleDark() {
   isDark.value = !isDark.value
@@ -28,10 +20,9 @@ function toggleDark() {
   saveSettings()
 }
 
-// 시스템 다크모드 추종 리스너 + 외부 클릭 닫기 리스너
+// 시스템 다크모드 추종 리스너
 let mql = null
 let onSys = null
-let onDocClick = null
 
 onMounted(() => {
   // 저장된 설정 로드 후 CSS 변수/테마 적용
@@ -46,23 +37,10 @@ onMounted(() => {
     }
     mql.addEventListener('change', onSys)
   }
-
-  if (typeof document !== 'undefined') {
-    onDocClick = (e) => {
-      if (!showSettings.value) return
-      if (settingsWrap.value && !settingsWrap.value.contains(e.target)) {
-        showSettings.value = false
-      }
-    }
-    document.addEventListener('click', onDocClick)
-  }
 })
 
 onBeforeUnmount(() => {
   if (mql && onSys) mql.removeEventListener('change', onSys)
-  if (typeof document !== 'undefined' && onDocClick) {
-    document.removeEventListener('click', onDocClick)
-  }
 })
 
 function openSearch() {
@@ -105,16 +83,13 @@ function openSearch() {
         </svg>
       </a>
 
-      <!-- Settings (톱니바퀴) Icon + 팝오버 -->
-      <div ref="settingsWrap" class="settings-wrap">
-        <button class="footer-icon" @click="toggleSettings" title="설정">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </button>
-        <SettingsPanel v-if="showSettings" class="settings-popover" @close="showSettings = false" />
-      </div>
+      <!-- Settings (톱니바퀴) Icon → 전역 설정 모달 열기 -->
+      <button class="footer-icon" @click="openSettings" title="설정">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -206,16 +181,5 @@ function openSearch() {
   background: var(--vp-c-brand-soft);
 }
 
-/* 설정 팝오버: footer 위쪽(bottom 정렬)에 절대배치 */
-.settings-wrap {
-  position: relative;
-  display: inline-flex;
-}
-.settings-popover {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  z-index: 50;
-}
 
 </style>
