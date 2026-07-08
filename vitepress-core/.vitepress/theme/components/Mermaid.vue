@@ -3,7 +3,8 @@
   상세: 그래프 하단 "확대하기" 버튼 → 전체화면 모달에서 휠/버튼 확대·축소, 드래그 이동(pan), 리셋, ESC 닫기.
         넓은 그래프(width 과다)가 본문에서 잘려 보일 때 모달로 자유롭게 탐색한다. 외부 의존성 없이 동작.
         확대는 CSS transform:scale(비트맵 확대 → 블러) 대신 SVG width/height를 base×scale로 재설정해 벡터를 재렌더(선명). 팬만 translate 사용.
-  생성일: 2026-04-08 | 수정일: 2026-07-01
+        본문 표시는 자연 크기(viewBox) 고정 — useMaxWidth 축소로 넓은 그래프가 깨알같이 작아지는 문제 방지, 넘치면 가로 스크롤.
+  생성일: 2026-04-08 | 수정일: 2026-07-08
 -->
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
@@ -63,14 +64,25 @@ async function render() {
     themeVariables: dark ? DARK_VARS : undefined,
     // mermaid 내부 렌더/측정 시에도 라벨 line-height를 타이트하게(글자 잘림 방지)
     themeCSS: '.nodeLabel,.edgeLabel,.label,.nodeLabel p,foreignObject div,foreignObject span{line-height:1.3 !important;}',
-    flowchart: { useMaxWidth: true, htmlLabels: true, padding: 12 },
-    sequence: { useMaxWidth: true },
+    // useMaxWidth:false → 컨테이너 폭에 맞춰 통째로 축소하지 않고 자연 크기로 렌더.
+    // 넓은 그래프는 .mermaid-box의 overflow-x 스크롤로 탐색(글자 크기 항상 유지).
+    flowchart: { useMaxWidth: false, htmlLabels: true, padding: 12 },
+    sequence: { useMaxWidth: false },
   })
   const id = 'mermaid-' + Math.random().toString(36).slice(2)
   try {
     const { svg } = await mermaid.render(id, props.chart.replaceAll('\\n', '\n'))
     container.value.innerHTML = svg
     svgCode.value = svg
+    // 자연 크기(viewBox) 고정: 전역 CSS(max-width:100%)나 flowchart 외 다이어그램의
+    // useMaxWidth 축소가 남아 있어도 인라인 스타일로 원본 크기를 강제(글자 항상 읽히는 크기).
+    const el = container.value.querySelector('svg')
+    const vb = el && el.viewBox && el.viewBox.baseVal
+    if (el && vb && vb.width && vb.height) {
+      el.style.maxWidth = 'none'
+      el.style.width = vb.width + 'px'
+      el.style.height = vb.height + 'px'
+    }
   } catch {
     container.value.innerHTML = '<pre style="color:red">Mermaid 렌더링 실패</pre>'
     svgCode.value = ''
@@ -260,10 +272,13 @@ onBeforeUnmount(() => {
 <style scoped>
 .mermaid-block { margin: 1.5rem 0; }
 .mermaid-box {
-  display: flex; justify-content: center; overflow-x: auto;
+  display: flex; overflow-x: auto;
   border: 1px solid var(--vp-c-border); border-radius: 0.5rem;
   background: var(--vp-c-bg-elv); padding: 1rem;
 }
+/* margin:auto 중앙 정렬 — justify-content:center와 달리 그래프가 박스보다 넓어져
+   스크롤될 때 왼쪽 끝이 잘려 접근 불가해지는 flex 중앙정렬 함정을 피한다. */
+.mermaid-wrapper { margin: 0 auto; }
 .mermaid-actions { display: flex; justify-content: flex-end; margin-top: 0.5rem; }
 .zoom-btn {
   display: inline-flex; align-items: center; gap: 0.35rem;
