@@ -1,8 +1,9 @@
 # ============================================================
 # build-windows.yml: Windows용 설치 파일(.exe) 자동 빌드 & 릴리스
-# 상세: windows-latest 러너에서 electron-builder로 NSIS 인스톨러 + 포터블 exe 생성.
+# 상세: windows-latest 러너에서 electron-builder로 NSIS 인스톨러 exe 생성.
+#       빌드 후 exe 파일명에 SHA 7자리를 붙여 빌드 식별성 확보.
 #       태그(v*) 푸시 시 GitHub Releases에 자동 첨부, 수동 실행 시 Artifacts로 업로드.
-# 생성일: 2026-06-24
+# 생성일: 2026-06-24 | 수정일: 2026-07-08
 # ============================================================
 name: Build Windows Installer
 
@@ -45,11 +46,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # 빌드 산출물 exe 파일명에 SHA 7자리를 추가 → 구버전/신버전 혼용 환경에서 즉시 식별 가능.
+      # run 값에 콜론+공백이 포함되므로 블록 스칼라(|) 사용.
+      - name: Rename exe with SHA
+        shell: pwsh
+        run: |
+          Get-ChildItem dist/*.exe | Rename-Item -NewName { $_.BaseName + '-' + $env:GITHUB_SHA.Substring(0,7) + $_.Extension }
+
       # 수동 실행/일반 푸시: 빌드 결과를 Artifacts로 업로드(다운로드용)
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: local-cdocs-windows
+          name: local-cdocs-windows-${{ github.sha }}
           path: |
             dist/*.exe
           if-no-files-found: error

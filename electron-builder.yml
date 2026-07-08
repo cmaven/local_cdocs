@@ -2,8 +2,9 @@
 # electron-builder.yml: 크로스플랫폼 패키징 설정 (Windows + Linux)
 # 상세: electron/, vitepress-core/, docs-template/, node_modules를 번들.
 #       VitePress dev 서버를 런타임에 자식 프로세스로 띄우므로 node_modules 포함 필수.
-#       동일 코드베이스로 Windows(NSIS+portable)와 Linux(AppImage)를 생성한다.
-# 생성일: 2026-06-22 | 수정일: 2026-06-22
+#       동일 코드베이스로 Windows(NSIS 설치본)와 Linux(AppImage)를 생성한다.
+#       portable 타깃은 제거됨(산출물 1개로 절감, 빌드 식별성 단순화).
+# 생성일: 2026-06-22 | 수정일: 2026-07-08
 # ============================================================
 appId: com.cmaven.localcdocs
 productName: local-cdocs
@@ -35,9 +36,6 @@ win:
     - target: nsis
       arch:
         - x64
-    - target: portable
-      arch:
-        - x64
   # 아이콘 파일이 있으면 사용(build/icon.ico), 없으면 electron-builder 기본 아이콘.
   icon: build/icon.ico
 
@@ -48,9 +46,6 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: local-cdocs
-
-portable:
-  artifactName: local-cdocs-portable-${version}.exe
 
 # ── Linux: AppImage(범용 단일 실행 파일) ──
 # 아이콘 미지정 시 electron-builder 기본 아이콘 사용. AppImage는 설치 없이 실행권한만 주면 됨.

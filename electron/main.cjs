@@ -467,10 +467,13 @@ function buildMenu() {
 
 // ── 창 생성 ────────────────────────────────────────────────
 function createWindow() {
+  // 창 제목: 버전·SHA를 고정 표시 → 설치 직후 타이틀바만 봐도 어떤 빌드인지 확인 가능
+  const windowTitle = `local-cdocs v${app.getVersion()}·${buildInfo.sha}`
+
   win = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: 'local-cdocs',
+    title: windowTitle,
     backgroundColor: '#1b1b1f',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -478,6 +481,9 @@ function createWindow() {
       nodeIntegration: false,
     },
   })
+
+  // VitePress 페이지 타이틀이 창 제목을 덮어쓰지 않도록 고정
+  win.on('page-title-updated', (e) => e.preventDefault())
 
   // 외부 링크는 기본 브라우저로
   win.webContents.setWindowOpenHandler(({ url }) => {
