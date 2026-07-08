@@ -1,8 +1,8 @@
 /**
  * preload.cjs: 렌더러 ↔ 메인 IPC 브리지 (contextBridge)
  * 상세: 관리형 라이브러리 API를 window.localcdocs로 노출(컬렉션 생성/가져오기/
- *       이름변경/삭제/탐색기열기/루트조회). 기존 window.localCdocs(상태 구독 등)도 유지.
- * 생성일: 2026-06-22 | 수정일: 2026-06-25
+ *       이름변경/삭제/탐색기열기/루트조회/설정 영속). 기존 window.localCdocs(상태 구독 등)도 유지.
+ * 생성일: 2026-06-22 | 수정일: 2026-07-08
  */
 const { contextBridge, ipcRenderer } = require('electron')
 
@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('localcdocs', {
   deleteProject: (cat, project) => ipcRenderer.invoke('library:deleteProject', cat, project),
   // 프로젝트 폴더 탐색기에서 열기
   revealProject: (cat, project) => ipcRenderer.invoke('library:revealProject', cat, project),
+  // 설정 영속 (electron-store 기반, 채널: settings:get / settings:set)
+  // IPC 채널명 변경 금지 — worker-electron/worker-theme 워커 간 계약
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  saveSettings: (value) => ipcRenderer.invoke('settings:set', value),
 })
 
 // ── 기존 상태/유틸 API (호환 유지) ─────────────────────────

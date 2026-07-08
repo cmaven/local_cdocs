@@ -1,13 +1,10 @@
-<!-- SidebarFooter.vue: 사이드바 하단 - 검색 + 아이콘(토글/GitHub/설정) | 수정일: 2026-07-01 -->
+<!-- SidebarFooter.vue: 사이드바 하단 - 검색 + 아이콘(토글/GitHub/설정) | 수정일: 2026-07-08 -->
+<!-- 초기화(loadSettings/applyCssVars/시스템 리스너)는 CustomLayout.vue에서 수행 — 여기선 토글/모달만 담당 -->
 <script setup>
-import { onMounted, onBeforeUnmount } from 'vue'
 import { useData } from 'vitepress'
 import {
   settings,
-  loadSettings,
   saveSettings,
-  applyCssVars,
-  resolveIsDark,
   openSettings,
 } from '../composables/useSettings'
 
@@ -19,29 +16,6 @@ function toggleDark() {
   settings.themeMode = isDark.value ? 'dark' : 'light'
   saveSettings()
 }
-
-// 시스템 다크모드 추종 리스너
-let mql = null
-let onSys = null
-
-onMounted(() => {
-  // 저장된 설정 로드 후 CSS 변수/테마 적용
-  loadSettings()
-  applyCssVars()
-  isDark.value = resolveIsDark(settings.themeMode)
-
-  if (typeof window !== 'undefined') {
-    mql = window.matchMedia('(prefers-color-scheme: dark)')
-    onSys = () => {
-      if (settings.themeMode === 'system') isDark.value = mql.matches
-    }
-    mql.addEventListener('change', onSys)
-  }
-})
-
-onBeforeUnmount(() => {
-  if (mql && onSys) mql.removeEventListener('change', onSys)
-})
 
 function openSearch() {
   const event = new KeyboardEvent('keydown', {

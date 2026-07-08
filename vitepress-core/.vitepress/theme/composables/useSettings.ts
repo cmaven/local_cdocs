@@ -1,6 +1,6 @@
 /**
- * useSettings.ts: 사용자 문서 보기 설정(테마/줄간격/폰트크기/영역별 폰트) 상태 + localStorage 영속화 + CSS 변수 적용
- * 생성일: 2026-06-30 | 수정일: 2026-07-01
+ * useSettings.ts: 사용자 문서 보기 설정(테마/줄간격/폰트크기/영역별 폰트) 상태 + 영속화(IPC 우선/localStorage 폴백) + CSS 변수 적용
+ * 생성일: 2026-06-30 | 수정일: 2026-07-08
  */
 import { reactive, ref } from 'vue'
 
@@ -72,8 +72,26 @@ function fontStack(value: string): string {
   return (found || FONT_OPTIONS[0]).stack
 }
 
-/** localStorage에서 설정 로드 (SSR 안전) */
-export function loadSettings(): void {
+/**
+ * 설정 로드: Electron IPC 우선, 없으면 localStorage 폴백 (SSR 안전, async)
+ * - window.localcdocs?.getSettings() 존재 시 IPC(electron-store)에서 로드
+ * - 순수 브라우저/CLI 환경에서는 localStorage 폴백으로 동작
+ */
+export async function loadSettings(): Promise<void> {
+  try {
+    // Electron IPC 경로
+    const ipc = (window as any).localcdocs
+    if (typeof window !== 'undefined' && ipc?.getSettings) {
+      const stored = await ipc.getSettings()
+      if (stored && typeof stored === 'object') {
+        Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored })
+        return
+      }
+    }
+  } catch {
+    /* IPC 실패 시 localStorage 폴백으로 진행 */
+  }
+  // localStorage 폴백 (브라우저 직접 실행 / IPC 미응답)
   if (typeof localStorage === 'undefined') return
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -85,8 +103,22 @@ export function loadSettings(): void {
   }
 }
 
-/** 현재 설정을 localStorage에 저장 (SSR 안전) */
+/**
+ * 현재 설정 저장: Electron IPC + localStorage 병기 저장 (SSR 안전)
+ * - IPC 사용 가능 시 electron-store에 저장(재시작 후에도 유지)
+ * - localStorage에도 항상 동기 저장(브라우저 폴백 일관성 유지)
+ */
 export function saveSettings(): void {
+  // Electron IPC 저장 (비동기, 실패 무시)
+  try {
+    const ipc = (window as any).localcdocs
+    if (typeof window !== 'undefined' && ipc?.saveSettings) {
+      ipc.saveSettings({ ...settings }).catch?.(() => { /* 저장 실패 무시 */ })
+    }
+  } catch {
+    /* IPC 호출 실패 무시 */
+  }
+  // localStorage 동기 저장 (항상 수행)
   if (typeof localStorage === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))

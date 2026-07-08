@@ -1,17 +1,23 @@
-<!-- CustomLayout.vue: VitePress DefaultTheme 확장 레이아웃 + 사이드바 토글 | 수정일: 2026-07-01 -->
+<!-- CustomLayout.vue: VitePress DefaultTheme 확장 레이아웃 + 사이드바 토글 | 수정일: 2026-07-08 -->
 <script setup>
 import DefaultTheme from 'vitepress/theme'
 import { useData, useRoute } from 'vitepress'
-import { ref, watchEffect, onUnmounted } from 'vue'
+import { ref, watchEffect, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import CategoryDropdown from './CategoryDropdown.vue'
 import VersionSelector from './VersionSelector.vue'
 import SidebarFooter from './SidebarFooter.vue'
 import DocHeader from './DocHeader.vue'
 import SettingsModal from './SettingsModal.vue'
-import { openSettings } from '../composables/useSettings'
+import {
+  settings,
+  loadSettings,
+  applyCssVars,
+  resolveIsDark,
+  openSettings,
+} from '../composables/useSettings'
 
 const { Layout } = DefaultTheme
-const { frontmatter } = useData()
+const { frontmatter, isDark, theme } = useData()
 const route = useRoute()
 const sidebarCollapsed = ref(false)
 
@@ -36,6 +42,29 @@ watchEffect(() => {
   }
 })
 
+// 시스템 다크모드 추종 리스너 (SidebarFooter에서 이동)
+let mql = null
+let onSys = null
+
+onMounted(async () => {
+  // 저장된 설정 로드 후 CSS 변수/테마 적용 (IPC 우선 → localStorage 폴백)
+  await loadSettings()
+  applyCssVars()
+  isDark.value = resolveIsDark(settings.themeMode)
+
+  if (typeof window !== 'undefined') {
+    mql = window.matchMedia('(prefers-color-scheme: dark)')
+    onSys = () => {
+      if (settings.themeMode === 'system') isDark.value = mql.matches
+    }
+    mql.addEventListener('change', onSys)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (mql && onSys) mql.removeEventListener('change', onSys)
+})
+
 onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.body.classList.remove('hide-navbar')
@@ -52,6 +81,12 @@ onUnmounted(() => {
       <div class="sidebar-top">
         <div class="sidebar-header">
           <a href="/" class="sidebar-title">local-cdocs</a>
+          <!-- 빌드 버전 표시: v{version}·{sha7}, 툴팁=빌드 날짜 -->
+          <span
+            v-if="theme.appVersion"
+            class="sidebar-version"
+            :title="theme.appVersion.builtAt ? '빌드: ' + theme.appVersion.builtAt : ''"
+          >{{ theme.appVersion.text }}</span>
           <button class="sidebar-toggle" @click="toggleSidebar" title="사이드바 닫기">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
@@ -135,9 +170,13 @@ onUnmounted(() => {
 .sidebar-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.4rem;
   padding: 0.75rem;
   border-bottom: 1px solid var(--vp-c-border);
+}
+/* 토글 버튼을 오른쪽 끝으로 밀기 (타이틀+버전 왼쪽, 토글 오른쪽) */
+.sidebar-header .sidebar-toggle {
+  margin-left: auto;
 }
 .sidebar-header .sidebar-title {
   font-size: 1rem;
@@ -150,6 +189,16 @@ onUnmounted(() => {
 }
 .sidebar-header .sidebar-title:hover {
   color: var(--vp-c-brand-1);
+}
+/* 버전 배지: 타이틀 baseline 정렬, 음영 처리로 보조 정보임을 시각화 */
+.sidebar-version {
+  font-size: 0.68rem;
+  color: var(--vp-c-text-3);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  vertical-align: baseline;
+  flex-shrink: 0;
+  cursor: default;
 }
 .sidebar-toggle {
   display: flex;

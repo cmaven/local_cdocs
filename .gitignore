@@ -19,6 +19,9 @@ dist/
 # 상태 점검용 스크린샷
 status_*.png
 
+# CI 빌드 시 생성되는 빌드 정보 파일 (로컬 dev 환경에서 실수로 커밋 방지)
+electron/build-info.json
+
 # 로그/임시
 *.log
 *.tgz

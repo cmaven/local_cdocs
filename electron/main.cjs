@@ -2,9 +2,9 @@
  * main.cjs: Electron 메인 프로세스 (CommonJS)
  * 상세: 관리형 라이브러리 모델. 고정 라이브러리 루트(Documents/local-cdocs)를
  *       항상 열고, 그 안의 컬렉션 폴더를 생성/가져오기/이름변경/삭제/탐색기열기 한다.
- *       VitePress dev 서버 자식 프로세스 기동/종료, 동적 포트, chokidar 실시간 감지,
- *       라이브러리 IPC 핸들러, 네이티브 메뉴(라이브러리용).
- * 생성일: 2026-06-22 | 수정일: 2026-06-25
+ *       VitePress dev 서버 자식 프로세스 기동/종료, 선호 포트 고정, chokidar 실시간 감지,
+ *       라이브러리 IPC 핸들러, 설정 영속 IPC(settings:get/set), 네이티브 메뉴(라이브러리용).
+ * 생성일: 2026-06-22 | 수정일: 2026-07-08
  */
 const { app, BrowserWindow, dialog, Menu, ipcMain, shell } = require('electron')
 const path = require('node:path')
@@ -14,6 +14,17 @@ const net = require('node:net')
 
 const chokidar = require('chokidar')
 const getPort = require('get-port') // v5: CJS default export (함수)
+// electron-store v8(CJS) — v9+는 ESM 전용이므로 업그레이드 금지
+const Store = require('electron-store')
+const store = new Store()
+
+// ── 빌드 정보 로드 (CI 빌드 시 electron/build-info.json 생성됨, 없으면 dev fallback) ──
+let buildInfo = { sha: 'dev', builtAt: '' }
+try {
+  buildInfo = JSON.parse(fs.readFileSync(path.join(__dirname, 'build-info.json'), 'utf-8'))
+} catch {
+  // 로컬 dev 환경: build-info.json 없음 → sha='dev', builtAt='' 유지
+}
 
 // ── 경로 상수 ──────────────────────────────────────────────
 // 앱 루트(개발 시 프로젝트 루트, 패키징 시 app.asar 또는 resources)
@@ -273,17 +284,22 @@ async function startVitePress(folder) {
   // 기존 서버 정리
   await killVitePress()
 
-  // 빈 포트 동적 할당(get-port v5)
-  currentPort = await getPort()
+  // 선호 포트 배열로 고정 할당(get-port v5).
+  // 같은 origin(127.0.0.1:4873)이 유지되어야 localStorage(테마/설정)가 재시작 후에도 살아남는다.
+  // 모두 점유된 경우 get-port가 임의 포트로 fallback하지만, 그 경우에도 Phase 2 IPC 영속화가 보증한다.
+  currentPort = await getPort({ port: [4873, 4874, 4875, 4876, 4877] })
 
   sendStatus('문서 서버를 기동하는 중...', folder)
 
-  // ENV로 LOCAL_DOCS_DIR(콘텐츠 폴더) + LOCAL_DOCS_PORT(고정 포트) 주입.
+  // ENV로 LOCAL_DOCS_DIR(콘텐츠 폴더) + LOCAL_DOCS_PORT + 버전/SHA/빌드일 주입.
   const env = {
     ...process.env,
     LOCAL_DOCS_DIR: folder,
     LOCAL_DOCS_PORT: String(currentPort),
     ELECTRON_RUN_AS_NODE: '1', // Electron 실행파일을 순수 node처럼 동작시킴
+    CDOCS_APP_VERSION: app.getVersion(),          // package.json version (예: 1.0.0)
+    CDOCS_BUILD_SHA: buildInfo.sha,               // 커밋 SHA 앞 7자리, 또는 'dev'
+    CDOCS_BUILT_AT: buildInfo.builtAt,            // YYYY-MM-DD, 없으면 ''
   }
 
   // process.execPath(= Electron exe)를 node 모드로 사용해 vitepress JS 진입점을 실행.
@@ -557,6 +573,13 @@ ipcMain.handle('library:revealProject', async (_evt, cat, project) => {
     console.error('[local-cdocs] revealProject 실패:', e)
   }
 })
+
+// ── 설정 영속 IPC (electron-store 기반) ─────────────────────
+// 채널: settings:get / settings:set (preload 계약과 동일 — 이름 변경 금지)
+// key 'cdocsSettings'에 테마·폰트·줄간격 등 사용자 설정 객체를 통째로 저장한다.
+// localStorage(origin 단위)와 달리 포트가 바뀌어도 항상 동일한 값을 반환한다.
+ipcMain.handle('settings:get', () => store.get('cdocsSettings') ?? null)
+ipcMain.handle('settings:set', (_evt, value) => { store.set('cdocsSettings', value) })
 
 // ── 앱 라이프사이클 ────────────────────────────────────────
 // 단일 인스턴스 보장(중복 실행 방지)

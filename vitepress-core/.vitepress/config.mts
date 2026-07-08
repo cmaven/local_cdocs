@@ -4,7 +4,7 @@
  *       (ENV 미지정 시 vitepress-core/.. 기본 폴더 사용 — CLI 단독 검증용)
  *       package.json에 "type":"module"이 없어 .ts는 CJS로 로드돼 vitepress(ESM) require 실패 →
  *       .mts 확장자로 ESM 로딩을 강제한다. ESM이라 __dirname 대신 import.meta.url 사용.
- * 생성일: 2026-04-08 | 수정일: 2026-06-25
+ * 생성일: 2026-04-08 | 수정일: 2026-07-08
  */
 import { defineConfig } from 'vitepress'
 import fs from 'node:fs'
@@ -249,6 +249,21 @@ const sidebar = generateSidebar()
 const categories = generateCategories()
 const homeProjects = generateHomeProjects()
 
+/**
+ * 버전 표시: Electron main.cjs가 빌드 시 주입하는 env에서 읽음.
+ * - CDOCS_APP_VERSION: package.json 버전 (예: 1.0.0)
+ * - CDOCS_BUILD_SHA: 커밋 SHA 앞 7자리 또는 'dev' (로컬/CI 구분)
+ * - CDOCS_BUILT_AT: 빌드 날짜 YYYY-MM-DD 또는 '' (툴팁용)
+ * ENV 미주입(CLI 단독 실행) 시 sha='dev'로 폴백.
+ */
+const APP_VERSION = process.env.CDOCS_APP_VERSION || '1.0.0'
+const BUILD_SHA = process.env.CDOCS_BUILD_SHA || 'dev'
+const BUILT_AT = process.env.CDOCS_BUILT_AT || ''
+const appVersion = {
+  text: `v${APP_VERSION}·${BUILD_SHA}`,
+  builtAt: BUILT_AT,
+}
+
 export default defineConfig({
   // 사용자가 선택한 폴더(docsRoot)를 콘텐츠 소스로 사용.
   // .vitepress(테마/config)는 vitepress-core 안에 그대로 두고, 마크다운만 외부 폴더에서 읽는다.
@@ -272,6 +287,7 @@ export default defineConfig({
     sidebar,
     categories,
     homeProjects,
+    appVersion,
 
     search: {
       provider: 'local'

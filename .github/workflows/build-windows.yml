@@ -32,6 +32,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # electron/build-info.json 생성 (SHA 7자리 + 빌드 날짜).
+      # Windows 러너이므로 크로스플랫폼 안전한 node -e 사용.
+      # electron-builder의 files 설정에 electron/**/* 가 포함되어 있어 자동으로 번들된다.
+      - name: Write build info
+        run: node -e "require('fs').writeFileSync('electron/build-info.json', JSON.stringify({ sha: process.env.GITHUB_SHA.slice(0,7), builtAt: new Date().toISOString().slice(0,10) }))"
+
       - name: Build Windows installer
         run: npm run build:win
         env:
