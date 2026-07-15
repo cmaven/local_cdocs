@@ -4,7 +4,7 @@
         넓은 그래프(width 과다)가 본문에서 잘려 보일 때 모달로 자유롭게 탐색한다. 외부 의존성 없이 동작.
         확대는 CSS transform:scale(비트맵 확대 → 블러) 대신 SVG width/height를 base×scale로 재설정해 벡터를 재렌더(선명). 팬만 translate 사용.
         본문 표시는 자연 크기(viewBox) 고정 — useMaxWidth 축소로 넓은 그래프가 깨알같이 작아지는 문제 방지, 넘치면 가로 스크롤.
-  생성일: 2026-04-08 | 수정일: 2026-07-08
+  생성일: 2026-04-08 | 수정일: 2026-07-15
 -->
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
@@ -68,6 +68,7 @@ async function render() {
     // 넓은 그래프는 .mermaid-box의 overflow-x 스크롤로 탐색(글자 크기 항상 유지).
     flowchart: { useMaxWidth: false, htmlLabels: true, padding: 12 },
     sequence: { useMaxWidth: false },
+    suppressErrorRendering: true,
   })
   const id = 'mermaid-' + Math.random().toString(36).slice(2)
   try {
@@ -83,8 +84,16 @@ async function render() {
       el.style.width = vb.width + 'px'
       el.style.height = vb.height + 'px'
     }
-  } catch {
-    container.value.innerHTML = '<pre style="color:red">Mermaid 렌더링 실패</pre>'
+  } catch (e) {
+    // mermaid가 자체 오류 SVG를 DOM에 삽입하는 것을 막기 위해 container를 비운 뒤
+    // textContent로 메시지를 삽입한다(XSS 방지, getElementById/d+id 잔재 없음).
+    const pre = document.createElement('pre')
+    pre.style.color = 'red'
+    pre.textContent = 'Mermaid 렌더링 실패: ' + (e instanceof Error ? e.message : String(e))
+    if (container.value) {
+      container.value.textContent = ''
+      container.value.appendChild(pre)
+    }
     svgCode.value = ''
   }
 }
