@@ -3,8 +3,9 @@
  * 상세: 관리형 라이브러리 모델. 고정 라이브러리 루트(Documents/local-cdocs)를
  *       항상 열고, 그 안의 컬렉션 폴더를 생성/가져오기/이름변경/삭제/탐색기열기 한다.
  *       VitePress dev 서버 자식 프로세스 기동/종료, 선호 포트 고정, chokidar 실시간 감지,
- *       라이브러리 IPC 핸들러, 설정 영속 IPC(settings:get/set), 네이티브 메뉴(라이브러리용).
- * 생성일: 2026-06-22 | 수정일: 2026-07-08
+ *       라이브러리 IPC 핸들러, 설정 영속 IPC(settings:get/set), 네이티브 메뉴(라이브러리용),
+ *       페이지 내 검색 IPC(find:start/stop/result).
+ * 생성일: 2026-06-22 | 수정일: 2026-07-15
  */
 const { app, BrowserWindow, dialog, Menu, ipcMain, shell } = require('electron')
 const path = require('node:path')
@@ -485,6 +486,14 @@ function createWindow() {
   // VitePress 페이지 타이틀이 창 제목을 덮어쓰지 않도록 고정
   win.on('page-title-updated', (e) => e.preventDefault())
 
+  // 페이지 내 검색 결과를 렌더러로 전달 (채널: find:result)
+  win.webContents.on('found-in-page', (_e, r) => {
+    win.webContents.send('find:result', {
+      activeMatchOrdinal: r.activeMatchOrdinal,
+      matches: r.matches,
+    })
+  })
+
   // 외부 링크는 기본 브라우저로
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http://127.0.0.1')) return { action: 'allow' }
@@ -586,6 +595,22 @@ ipcMain.handle('library:revealProject', async (_evt, cat, project) => {
 // localStorage(origin 단위)와 달리 포트가 바뀌어도 항상 동일한 값을 반환한다.
 ipcMain.handle('settings:get', () => store.get('cdocsSettings') ?? null)
 ipcMain.handle('settings:set', (_evt, value) => { store.set('cdocsSettings', value) })
+
+// ── 페이지 내 검색 IPC (채널: find:start / find:stop) ───────
+// 채널명 변경 금지 — preload.cjs 계약과 동일
+ipcMain.handle('find:start', (_evt, text, opts) => {
+  if (!win) return
+  // 빈 문자열은 findInPage 예외 → stopFindInPage로 처리
+  if (!text) {
+    win.webContents.stopFindInPage('clearSelection')
+    return
+  }
+  win.webContents.findInPage(text, opts)
+})
+ipcMain.handle('find:stop', () => {
+  if (!win) return
+  win.webContents.stopFindInPage('clearSelection')
+})
 
 // ── 앱 라이프사이클 ────────────────────────────────────────
 // 단일 인스턴스 보장(중복 실행 방지)

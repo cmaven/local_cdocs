@@ -8,6 +8,7 @@ import VersionSelector from './VersionSelector.vue'
 import SidebarFooter from './SidebarFooter.vue'
 import DocHeader from './DocHeader.vue'
 import SettingsModal from './SettingsModal.vue'
+import FindBar from './FindBar.vue'
 import {
   settings,
   loadSettings,
@@ -15,6 +16,19 @@ import {
   resolveIsDark,
   openSettings,
 } from '../composables/useSettings'
+
+const findBarRef = ref(null)
+
+function onGlobalKeydown(e) {
+  // Ctrl+F 또는 Cmd+F: Electron 환경(window.cdocs.find 존재)에서만 가로채기
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    if (typeof window !== 'undefined' && window.cdocs?.find) {
+      e.preventDefault()
+      findBarRef.value?.open()
+    }
+    // 비-Electron(웹 dev)에서는 브라우저 기본 찾기 유지
+  }
+}
 
 const { Layout } = DefaultTheme
 const { frontmatter, isDark, theme } = useData()
@@ -58,11 +72,13 @@ onMounted(async () => {
       if (settings.themeMode === 'system') isDark.value = mql.matches
     }
     mql.addEventListener('change', onSys)
+    window.addEventListener('keydown', onGlobalKeydown)
   }
 })
 
 onBeforeUnmount(() => {
   if (mql && onSys) mql.removeEventListener('change', onSys)
+  if (typeof window !== 'undefined') window.removeEventListener('keydown', onGlobalKeydown)
 })
 
 onUnmounted(() => {
@@ -118,6 +134,9 @@ onUnmounted(() => {
 
   <!-- 설정 모달: 전역 1회 마운트 (Teleport로 body에 렌더됨) -->
   <SettingsModal />
+
+  <!-- 페이지 내 검색바: Ctrl+F로 열기, Electron 환경에서만 동작 (Teleport로 body에 렌더됨) -->
+  <FindBar ref="findBarRef" />
 
   <!-- 사이드바 닫힌 상태: 플로팅 버튼 -->
   <Transition name="float">

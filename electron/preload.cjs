@@ -2,7 +2,8 @@
  * preload.cjs: 렌더러 ↔ 메인 IPC 브리지 (contextBridge)
  * 상세: 관리형 라이브러리 API를 window.localcdocs로 노출(컬렉션 생성/가져오기/
  *       이름변경/삭제/탐색기열기/루트조회/설정 영속). 기존 window.localCdocs(상태 구독 등)도 유지.
- * 생성일: 2026-06-22 | 수정일: 2026-07-08
+ *       window.cdocs.find: 페이지 내 검색 API (find:start / find:stop / find:result)
+ * 생성일: 2026-06-22 | 수정일: 2026-07-15
  */
 const { contextBridge, ipcRenderer } = require('electron')
 
@@ -31,6 +32,23 @@ contextBridge.exposeInMainWorld('localcdocs', {
   // IPC 채널명 변경 금지 — worker-electron/worker-theme 워커 간 계약
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (value) => ipcRenderer.invoke('settings:set', value),
+})
+
+// ── 페이지 내 검색 API (채널: find:start / find:stop / find:result) ──
+// IPC 채널명 변경 금지 — main.cjs 핸들러와 계약
+contextBridge.exposeInMainWorld('cdocs', {
+  find: {
+    // 검색 시작: text=검색어, opts={forward, findNext}
+    start: (text, opts) => ipcRenderer.invoke('find:start', text, opts),
+    // 검색 종료 및 하이라이트 제거
+    stop: () => ipcRenderer.invoke('find:stop'),
+    // 결과 구독: cb({ activeMatchOrdinal, matches }) → 해제 함수 반환
+    onResult: (cb) => {
+      const handler = (_evt, result) => cb(result)
+      ipcRenderer.on('find:result', handler)
+      return () => ipcRenderer.removeListener('find:result', handler)
+    },
+  },
 })
 
 // ── 기존 상태/유틸 API (호환 유지) ─────────────────────────
