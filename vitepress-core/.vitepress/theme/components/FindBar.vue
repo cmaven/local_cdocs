@@ -1,4 +1,5 @@
-<!-- FindBar.vue: Ctrl+F 페이지 내 검색바 (Electron findInPage 기반) | 생성일: 2026-07-15 -->
+<!-- FindBar.vue: Ctrl+F 페이지 내 검색바 (Electron findInPage 기반) | 생성일: 2026-07-15 | 수정일: 2026-07-15 -->
+<!-- 자기 매치 보정: FindBar는 body 맨 끝 Teleport이므로 자기 매치는 항상 마지막 순번(N/N) — total=matches-1, 활성=마지막이면 같은 방향으로 자동 1회 이동 -->
 <script setup>
 import { ref, watch, onUnmounted } from 'vue'
 
@@ -9,6 +10,8 @@ const total = ref(0)
 
 let debounceTimer = null
 let unsubResult = null
+// 마지막 이동 방향: true=앞(다음), false=뒤(이전). 자기 매치 자동 건너뛰기 시 재사용.
+let lastForward = true
 
 // find API: Electron 환경에서만 사용 가능
 const find = typeof window !== 'undefined' && window.cdocs?.find
@@ -17,8 +20,21 @@ const find = typeof window !== 'undefined' && window.cdocs?.find
 function subscribeResult() {
   if (!find || unsubResult) return
   unsubResult = find.onResult((r) => {
-    current.value = r.activeMatchOrdinal ?? 0
-    total.value = r.matches ?? 0
+    // interim 이벤트는 무시 — finalUpdate=true인 최종 결과만 처리해 자동 건너뛰기 오발 방지
+    if (!r.finalUpdate) return
+    if (r.matches <= 1) {
+      // 자기 매치 1건뿐(본문 매치 없음) → "없음" 표시
+      current.value = 0
+      total.value = 0
+    } else if (r.activeMatchOrdinal === r.matches) {
+      // 활성 매치가 마지막 순번 = 검색바 자기 자신 → 같은 방향으로 1회 자동 이동(건너뛰기)
+      // 카운트 갱신은 다음 found-in-page 이벤트에서 처리
+      find.start(query.value, { forward: lastForward, findNext: true })
+    } else {
+      // 정상 케이스: 자기 매치(1건)를 total에서 제외해 표시
+      current.value = r.activeMatchOrdinal
+      total.value = r.matches - 1
+    }
   })
 }
 
@@ -29,9 +45,10 @@ function unsubscribeResult() {
   }
 }
 
-// 검색 실행 (debounce 150ms)
+// 검색 실행 (debounce 150ms). 방향=forward(초기 검색은 항상 앞 방향)
 function triggerSearch(text) {
   if (!find) return
+  lastForward = true
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     find.start(text, { forward: true, findNext: false })
@@ -52,11 +69,13 @@ watch(query, (val) => {
 
 function goNext() {
   if (!find || !query.value) return
+  lastForward = true
   find.start(query.value, { forward: true, findNext: true })
 }
 
 function goPrev() {
   if (!find || !query.value) return
+  lastForward = false
   find.start(query.value, { forward: false, findNext: true })
 }
 
@@ -70,6 +89,8 @@ function close() {
 }
 
 function onKeydown(e) {
+  // 한글 등 IME 조합 중 Enter 오발 방지
+  if (e.isComposing || e.keyCode === 229) return
   if (e.key === 'Enter') {
     if (e.shiftKey) goPrev()
     else goNext()

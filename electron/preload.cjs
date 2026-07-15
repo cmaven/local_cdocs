@@ -42,7 +42,7 @@ contextBridge.exposeInMainWorld('cdocs', {
     start: (text, opts) => ipcRenderer.invoke('find:start', text, opts),
     // 검색 종료 및 하이라이트 제거
     stop: () => ipcRenderer.invoke('find:stop'),
-    // 결과 구독: cb({ activeMatchOrdinal, matches }) → 해제 함수 반환
+    // 결과 구독: cb({ activeMatchOrdinal, matches, finalUpdate }) → 해제 함수 반환
     onResult: (cb) => {
       const handler = (_evt, result) => cb(result)
       ipcRenderer.on('find:result', handler)

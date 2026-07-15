@@ -487,10 +487,12 @@ function createWindow() {
   win.on('page-title-updated', (e) => e.preventDefault())
 
   // 페이지 내 검색 결과를 렌더러로 전달 (채널: find:result)
+  // finalUpdate: interim 이벤트와 최종 이벤트를 구분해 자기 매치 보정 오발 방지
   win.webContents.on('found-in-page', (_e, r) => {
     win.webContents.send('find:result', {
       activeMatchOrdinal: r.activeMatchOrdinal,
       matches: r.matches,
+      finalUpdate: r.finalUpdate,
     })
   })
 
