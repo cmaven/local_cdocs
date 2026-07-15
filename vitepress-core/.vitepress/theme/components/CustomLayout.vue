@@ -1,4 +1,4 @@
-<!-- CustomLayout.vue: VitePress DefaultTheme 확장 레이아웃 + 사이드바 토글 | 수정일: 2026-07-08 -->
+<!-- CustomLayout.vue: VitePress DefaultTheme 확장 레이아웃 + 사이드바 토글 | 수정일: 2026-07-15 -->
 <script setup>
 import DefaultTheme from 'vitepress/theme'
 import { useData, useRoute } from 'vitepress'
@@ -81,12 +81,6 @@ onUnmounted(() => {
       <div class="sidebar-top">
         <div class="sidebar-header">
           <a href="/" class="sidebar-title">local-cdocs</a>
-          <!-- 빌드 버전 표시: v{version}·{sha7}, 툴팁=빌드 날짜 -->
-          <span
-            v-if="theme.appVersion"
-            class="sidebar-version"
-            :title="theme.appVersion.builtAt ? '빌드: ' + theme.appVersion.builtAt : ''"
-          >{{ theme.appVersion.text }}</span>
           <button class="sidebar-toggle" @click="toggleSidebar" title="사이드바 닫기">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
@@ -102,6 +96,14 @@ onUnmounted(() => {
     </template>
     <template #doc-before>
       <DocHeader />
+    </template>
+    <template #nav-bar-title-after>
+      <!-- 빌드 버전 배지: navbar 타이틀(local-cdocs) 옆 표시, 툴팁=빌드 날짜 -->
+      <span
+        v-if="theme.appVersion"
+        class="navbar-version"
+        :title="theme.appVersion.builtAt ? '빌드: ' + theme.appVersion.builtAt : ''"
+      >{{ theme.appVersion.text }}</span>
     </template>
     <template #nav-bar-content-after>
       <!-- 상단 nav 우측: 문서 보기 설정 기어 버튼 -->
@@ -174,7 +176,7 @@ onUnmounted(() => {
   padding: 0.75rem;
   border-bottom: 1px solid var(--vp-c-border);
 }
-/* 토글 버튼을 오른쪽 끝으로 밀기 (타이틀+버전 왼쪽, 토글 오른쪽) */
+/* 토글 버튼을 오른쪽 끝으로 밀기 (타이틀 왼쪽, 토글 오른쪽) */
 .sidebar-header .sidebar-toggle {
   margin-left: auto;
 }
@@ -190,15 +192,15 @@ onUnmounted(() => {
 .sidebar-header .sidebar-title:hover {
   color: var(--vp-c-brand-1);
 }
-/* 버전 배지: 타이틀 baseline 정렬, 음영 처리로 보조 정보임을 시각화 */
-.sidebar-version {
-  font-size: 0.68rem;
+/* navbar 버전 배지: 타이틀 옆 baseline 정렬, 보조 정보 시각화 */
+.navbar-version {
+  font-size: 0.7rem;
   color: var(--vp-c-text-3);
   font-weight: 400;
-  letter-spacing: 0.01em;
-  vertical-align: baseline;
+  margin-left: 0.4rem;
   flex-shrink: 0;
   cursor: default;
+  vertical-align: baseline;
 }
 .sidebar-toggle {
   display: flex;
